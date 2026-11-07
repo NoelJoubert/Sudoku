@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sudoku</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sudoku">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="app.css?v=20261107143826">
+</head>
+<body>
+<div id="app">
+<div id="main">
+  <header>
+    <button id="listBtn" class="icon" title="Your puzzles">☰</button>
+    <div class="title"><span id="title">Sudoku</span> <span id="pnum" class="muted"></span></div>
+    <button id="soundBtn" class="icon" title="Sound">🔊</button>
+    <button id="settingsBtn" class="icon" title="Settings">⚙︎</button>
+  </header>
+
+  <div id="caseBar" hidden></div>
+
+  <details id="rulesBox" open>
+    <summary>Rules</summary>
+    <ul id="rules"></ul>
+  </details>
+
+  <div id="boardWrap">
+    <svg id="board" viewBox="-6 -6 912 912" xmlns="http://www.w3.org/2000/svg"></svg>
+    <svg id="fx" viewBox="-6 -6 912 912" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+    <div id="busy" hidden><div class="spinner"></div><div id="busyText">Making a new puzzle…</div></div>
+  </div>
+
+  <div id="hintBar" hidden>
+    <div id="hintText"></div>
+    <div id="hintBtns"></div>
+  </div>
+
+  <div id="modes" role="tablist">
+    <button data-mode="normal" class="on" title="Digits (Z)">Digit</button>
+    <button data-mode="corner" title="Corner marks (X, or hold Shift)">Corner</button>
+    <button data-mode="centre" title="Centre marks (C, or hold Ctrl)">Centre</button>
+    <button data-mode="colour" title="Colours (V)">Colour</button>
+  </div>
+  <div id="pad"></div>
+  <div id="actions">
+    <button id="clearBtn" title="Clear selected cells (Backspace)">⌫ Clear</button>
+    <button id="undoBtn" title="Undo (⌘Z)">↶ Undo</button>
+    <button id="redoBtn" title="Redo (⇧⌘Z)">↷ Redo</button>
+    <button id="hintBtn" class="accent" title="Get a hint">💡 Hint</button>
+    <button id="skipBtn" title="Put this puzzle aside and start a new one">Skip ⏭</button>
+  </div>
+</div>
+  <aside id="cagePanel" hidden></aside>
+  <div id="toast" hidden></div>
+</div>
+
+<div id="listPanel" class="panel" hidden>
+  <div class="panelHead"><h2>Your puzzles</h2><button class="icon close">✕</button></div>
+  <div id="listBody"></div>
+  <button id="newBtn" class="accent wide">＋ Start a new puzzle</button>
+  <button id="newCaseBtn" class="wide caseBtn">🗝️ Start an escape room</button>
+  <p class="syncStatus syncHelp"></p>
+</div>
+
+<div id="settingsPanel" class="panel" hidden>
+  <div class="panelHead"><h2>Settings</h2><button class="icon close">✕</button></div>
+  <label class="toggle"><input type="checkbox" data-setting="showMistakes"> <span>Show wrong digits in red<small>Compares your digits with the solution as you go.</small></span></label>
+  <label class="toggle"><input type="checkbox" data-setting="showConflicts"> <span>Highlight clashes<small>Shows the same digit twice in a row, column or box.</small></span></label>
+  <label class="toggle"><input type="checkbox" data-setting="autoClean"> <span>Tidy pencil marks automatically<small>Placing a digit removes it from the marks of cells it sees.</small></span></label>
+  <label class="toggle"><input type="checkbox" data-setting="highlightSame"> <span>Highlight matching digits</span></label>
+  <h3>Sound</h3>
+  <label class="toggle"><input type="checkbox" data-setting="sound"> <span>Play sounds<small>Each puzzle has its own classical piece. Finished rows, cages and lines play chords, and solving plays the piece. On an iPhone, the ring/silent switch must be on ring.</small></span></label>
+  <label class="toggle selectRow"><span>Each digit you place plays<small><select id="soundStyle"><option value="piece">the next note of the piece</option><option value="scale">its own note of the scale</option></select></small></span></label>
+  <h3>Keyboard</h3>
+  <ul class="keys">
+    <li><kbd>1</kbd>–<kbd>9</kbd> place a digit</li>
+    <li><kbd>Shift</kbd>+digit corner mark, <kbd>Ctrl</kbd>+digit centre mark</li>
+    <li><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd> <kbd>V</kbd> digit / corner / centre / colour, <kbd>Space</kbd> cycles</li>
+    <li>Arrow keys move, <kbd>Shift</kbd>/<kbd>⌘</kbd>-click or drag to select several cells</li>
+    <li><kbd>⌫</kbd> clear, <kbd>⌘Z</kbd> undo, <kbd>⇧⌘Z</kbd> redo, <kbd>Esc</kbd> deselect</li>
+  </ul>
+  <h3>Sync</h3>
+  <p class="syncHelp">Keeps your puzzles in step between the Mac and the phone, through progress.json in your private <b>sudoku-progress</b> repo on GitHub. It syncs on its own when you open the app and a few seconds after each move.</p>
+  <div id="syncSetup">
+    <p class="syncHelp">Paste this device's GitHub token (Contents read and write on sudoku-progress only). It stays on this device.</p>
+    <input id="syncToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+    <button id="syncSave" class="accent wide">Save and sync</button>
+  </div>
+  <div id="syncLinked">
+    <p class="syncStatus syncHelp"></p>
+    <div class="syncBtns">
+      <button id="syncNowBtn">Sync now</button>
+      <button id="syncForget">Remove token</button>
+    </div>
+  </div>
+  <button id="restartBtn" class="wide">Restart this puzzle</button>
+</div>
+
+<div id="storyPanel" class="panel center story" hidden>
+  <button class="icon storyClose" title="Close">✕</button>
+  <div id="storyBox">
+    <div class="big" id="storyIcon"></div>
+    <h2 id="storyTitle"></h2>
+    <div id="storyText"></div>
+    <div id="storyExtra"></div>
+    <div id="storyBtns"></div>
+  </div>
+</div>
+
+<div id="viewPanel" class="panel" hidden>
+  <div class="panelHead"><button id="viewBack" class="icon backBtn" title="Back to your puzzles" hidden>‹ Back</button><h2 id="viewTitle"></h2><button class="icon close" title="Back to the puzzle">✕</button></div>
+  <p id="viewMeta" class="viewMeta"></p>
+  <div class="viewTuneRow"><span id="viewPiece" class="nowPlaying"></span><button id="viewTune" class="tuneBtn">▶ Play its tune</button></div>
+  <svg id="viewBoard" viewBox="-6 -6 912 912" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="viewBtns">
+    <button id="viewFlip">Show the solution</button>
+    <button id="viewShare" class="accent">Share</button>
+    <button id="viewPlay" class="accent">Play it</button>
+  </div>
+  <ul id="viewRules" class="viewRules"></ul>
+</div>
+
+<div id="winPanel" class="panel center" hidden>
+  <div class="big">🎉</div>
+  <h2>Solved!</h2>
+  <p id="winText"></p>
+  <p id="winPiece" class="nowPlaying"></p>
+  <button id="winTune" class="tuneBtn">▶ Play it again</button>
+  <button id="winNext" class="accent wide">Next puzzle</button>
+  <button id="winCase" class="wide caseBtn">🗝️ Try an escape room</button>
+</div>
+
+<script src="engine.js?v=20261107143826"></script>
+<script src="sound.js?v=20261107143826"></script>
+<script src="app.js?v=20261107143826"></script>
+</body>
+</html>
